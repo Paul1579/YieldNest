@@ -1,0 +1,121 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+const API = 'http://localhost:5000/api';
+
+function AdminDashboard() {
+  const [token, setToken] = useState('');
+  const [users, setUsers] = useState([]);
+  const [form, setForm] = useState({ email: '', password: '' });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  const login = async () => {
+    try {
+      const res = await axios.post(`${API}/auth/login`, form);
+      if (res.data.role !== 'admin') return alert('Access denied');
+      setToken(res.data.token);
+      setIsLoggedIn(true);
+    } catch (err) {
+      alert('Login failed');
+    }
+  };
+
+  const getUsers = async () => {
+    try {
+      const res = await axios.get(`${API}/admin/users`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUsers(res.data);
+    } catch (err) {
+      alert('Failed to load users');
+    }
+  };
+
+  const updateBalance = async (id, amount) => {
+    try {
+      await axios.post(
+        `${API}/admin/users/${id}/balance`,
+        { amount },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      getUsers();
+    } catch (err) {
+      alert('Failed to update balance');
+    }
+  };
+
+  useEffect(() => {
+    if (token) getUsers();
+  }, [token]);
+
+  if (!isLoggedIn) {
+    return (
+      <div className="p-6 max-w-md mx-auto mt-20 border rounded shadow">
+        <h1 className="text-2xl font-bold mb-4">YieldNest Admin Login</h1>
+        <input
+          type="email"
+          placeholder="Admin Email"
+          className="border p-2 mb-2 w-full"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          className="border p-2 mb-4 w-full"
+          value={form.password}
+          onChange={(e) => setForm({ ...form, password: e.target.value })}
+        />
+        <button
+          className="bg-blue-600 text-white px-4 py-2 rounded w-full"
+          onClick={login}
+        >
+          Login
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 max-w-2xl mx-auto mt-10 border rounded shadow">
+      <h1 className="text-2xl font-bold mb-6">YieldNest Admin Dashboard</h1>
+      <table className="w-full text-left border">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="p-2">Name</th>
+            <th className="p-2">Email</th>
+            <th className="p-2">Balance</th>
+            <th className="p-2">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((user) => (
+            <tr key={user._id} className="border-t">
+              <td className="p-2">{user.name}</td>
+              <td className="p-2">{user.email}</td>
+              <td className="p-2">${user.balance.toFixed(2)}</td>
+              <td className="p-2">
+                <button
+                  className="bg-green-500 text-white px-2 py-1 rounded mr-2"
+                  onClick={() => updateBalance(user._id, 50)}
+                >
+                  +$50
+                </button>
+                <button
+                  className="bg-red-500 text-white px-2 py-1 rounded"
+                  onClick={() => updateBalance(user._id, -50)}
+                >
+                  -$50
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export default AdminDashboard;
